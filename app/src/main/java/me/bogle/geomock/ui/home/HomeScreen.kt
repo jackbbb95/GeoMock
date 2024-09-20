@@ -9,6 +9,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
@@ -25,7 +26,16 @@ fun HomeScreen() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        GoogleMap(cameraPositionState = cameraPositionState) {
+        GoogleMap(
+            uiSettings = MapUiSettings(
+                tiltGesturesEnabled = false,
+                myLocationButtonEnabled = true,
+                zoomControlsEnabled = false,
+                scrollGesturesEnabled = true,
+                scrollGesturesEnabledDuringRotateOrZoom = true
+            ),
+            cameraPositionState = cameraPositionState
+        ) {
             Marker(
                 state = singaporeMarkerState,
                 title = "Singapore",
