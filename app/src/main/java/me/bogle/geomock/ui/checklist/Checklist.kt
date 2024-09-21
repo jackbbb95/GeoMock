@@ -22,29 +22,22 @@ import me.bogle.geomock.ui.GeoMockThemedPreview
 
 @Composable
 fun Checklist(
-    fineLocationItem: ChecklistItem,
-    onFineLocationItemClicked: () -> Unit = { },
-    mockLocationProviderItem: ChecklistItem,
-    onMockLocationProviderItemClicked: () -> Unit = { },
+    checklistItems: List<ChecklistItem>,
+    onClick: (ChecklistItem) -> Unit,
 ) {
     Column(
         modifier = Modifier.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ChecklistCard(
-            modifier = Modifier.fillMaxWidth(),
-            description = fineLocationItem.description,
-            completionState = fineLocationItem.completionState,
-            onClick = onFineLocationItemClicked
-        )
-
-        ChecklistCard(
-            modifier = Modifier.fillMaxWidth(),
-            description = mockLocationProviderItem.description,
-            completionState = mockLocationProviderItem.completionState,
-            onClick = onMockLocationProviderItemClicked
-        )
+        checklistItems.forEach { item ->
+            ChecklistCard(
+                modifier = Modifier.fillMaxWidth(),
+                description = item.description,
+                completionState = item.completionState,
+                onClick = { onClick(item) }
+            )
+        }
     }
 }
 
@@ -65,7 +58,8 @@ private fun ChecklistCard(
                 ChecklistItemState.COMPLETE -> Color(0xFF097969)
             }
         ),
-        onClick = onClick
+        onClick = onClick,
+        enabled = completionState == ChecklistItemState.INCOMPLETE
     ) {
         Row(
             modifier = Modifier
@@ -92,13 +86,23 @@ private fun ChecklistCard(
 @Composable
 private fun ChecklistPreview() = GeoMockThemedPreview {
     Checklist(
-        fineLocationItem = ChecklistItem(
-            description = "Fine location access permission is required",
-            completionState = ChecklistItemState.COMPLETE
+        checklistItems = listOf(
+            ChecklistItem(
+                type = ChecklistItemType.LOCATION,
+                description = "Fine location access permission is required",
+                completionState = ChecklistItemState.COMPLETE
+            ),
+            ChecklistItem(
+                type = ChecklistItemType.DEVELOPER_SETTINGS,
+                description = "Developer options must be enabled",
+                completionState = ChecklistItemState.INCOMPLETE
+            ),
+            ChecklistItem(
+                type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
+                description = "GeoMock must be set as the system's mock location provider",
+                completionState = ChecklistItemState.INCOMPLETE
+            )
         ),
-        mockLocationProviderItem = ChecklistItem(
-            description = "Fine location access permission is required",
-            completionState = ChecklistItemState.INCOMPLETE
-        )
+        onClick = { }
     )
 }

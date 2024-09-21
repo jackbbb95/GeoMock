@@ -7,20 +7,22 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import me.bogle.geomock.util.OnLifecycleEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChecklistBottomSheet() {
     val checklistViewModel: ChecklistViewModel = viewModel()
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
     val sheetState = rememberModalBottomSheetState(confirmValueChange = { false })
 
-    LaunchedEffect(lifecycleOwner) {
-        checklistViewModel.performStartupCheck(context)
+    OnLifecycleEvent { _, event ->
+        if (event == Lifecycle.Event.ON_RESUME) {
+            checklistViewModel.performStartupCheck(context)
+        }
     }
 
     ModalBottomSheet(
@@ -34,16 +36,13 @@ fun ChecklistBottomSheet() {
 
             is ChecklistState.Incomplete -> {
                 Checklist(
-                    fineLocationItem = checklistState.fineLocationItem,
-                    onFineLocationItemClicked = {
-
-                        checklistViewModel.handleAskingForFineLocation(context)
-                    },
-                    mockLocationProviderItem = checklistState.mockLocationProviderItem,
-                    onMockLocationProviderItemClicked = {
-                        checklistViewModel.handleSettingMockLocationProvider(
-                            context
-                        )
+                    checklistItems = listOf(
+                        checklistState.fineLocationItem,
+                        checklistState.developerOptionsItem,
+                        checklistState.mockLocationProviderItem
+                    ),
+                    onClick = { item ->
+                        checklistViewModel.handleChecklistItemAction(context, item.type)
                     }
                 )
             }

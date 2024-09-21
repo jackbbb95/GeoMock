@@ -35,7 +35,7 @@ fun HomeScreen() {
             ExtendedFloatingActionButton(
                 text = { Text("Show bottom sheet") },
                 icon = { Icon(Icons.Filled.Add, contentDescription = "") },
-                onClick = {}
+                onClick = { }
             )
         }
     ) { padding ->
