@@ -10,7 +10,6 @@ import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -58,37 +57,41 @@ class ChecklistViewModel @Inject constructor(
             val isSetAsMockLocationProvider =
                 mockLocationProviderManager.state.value == MockLocationProviderState.IsSetAsMockLocationProvider
 
-            _uiState.update {
-                ChecklistState.Incomplete(
-                    fineLocationItem = ChecklistItem(
-                        type = ChecklistItemType.LOCATION,
-                        description = "Fine location access permission is required",
-                        completionState = if (hasFineLocationPermission) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
-                    ),
-                    developerOptionsItem = ChecklistItem(
-                        type = ChecklistItemType.DEVELOPER_SETTINGS,
-                        description = "Developer options must be enabled",
-                        completionState = if (isDeveloperOptionsEnabled) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
-                    ),
-                    mockLocationProviderItem = ChecklistItem(
-                        type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
-                        description = "GeoMock must be set as the system's mock location provider",
-                        completionState = if (isSetAsMockLocationProvider) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
-                    )
+            val state = ChecklistState.Incomplete(
+                fineLocationItem = ChecklistItem(
+                    type = ChecklistItemType.LOCATION,
+                    description = "Fine location access permission is required",
+                    completionState = if (hasFineLocationPermission) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
+                ),
+                developerOptionsItem = ChecklistItem(
+                    type = ChecklistItemType.DEVELOPER_SETTINGS,
+                    description = "Developer options must be enabled",
+                    completionState = if (isDeveloperOptionsEnabled) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
+                ),
+                mockLocationProviderItem = ChecklistItem(
+                    type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
+                    description = "GeoMock must be set as the system's mock location provider",
+                    completionState = if (isSetAsMockLocationProvider) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
                 )
-            }
+            )
+
+            reduceState(state)
         }
     }
 
-    fun handleChecklistItemAction(context: Context, checklistItemType: ChecklistItemType) {
+    fun handleChecklistItemAction(
+        context: Context,
+        checklistItemType: ChecklistItemType,
+        onRequestLocationPermission: () -> Unit
+    ) {
         when (checklistItemType) {
-            ChecklistItemType.LOCATION -> handleAskingForFineLocation(context)
+            ChecklistItemType.LOCATION -> handleAskingForFineLocation(onRequestLocationPermission)
             ChecklistItemType.DEVELOPER_SETTINGS -> handleEnablingDeveloperOptions(context)
             ChecklistItemType.MOCK_LOCATION_PROVIDER -> handleSettingMockLocationProvider(context)
         }
     }
 
-    private fun handleAskingForFineLocation(context: Context) {
+    private fun handleAskingForFineLocation(onRequestLocationPermission: () -> Unit) {
         viewModelScope.launch {
             (_uiState.value as? ChecklistState.Incomplete)?.let { current ->
                 reduceState(
@@ -99,16 +102,9 @@ class ChecklistViewModel @Inject constructor(
                     )
                 )
 
-                // TODO
-                delay(2000)
+                onRequestLocationPermission()
 
-                reduceState(
-                    newState = current.copy(
-                        fineLocationItem = current.fineLocationItem.copy(
-                            completionState = ChecklistItemState.COMPLETE
-                        )
-                    )
-                )
+                // New state will be reduced in ON_RESUME
             }
         }
     }
@@ -124,7 +120,6 @@ class ChecklistViewModel @Inject constructor(
                     )
                 )
 
-                // TODO
                 val intent = Intent(Settings.ACTION_DEVICE_INFO_SETTINGS).apply {
                     val bundle = bundleOf(EXTRA_FRAGMENT_ARG_KEY to EXTRA_BUILD_NUMBER)
                     putExtra(EXTRA_SHOW_FRAGMENT_ARGUMENTS, bundle)
@@ -132,13 +127,7 @@ class ChecklistViewModel @Inject constructor(
 
                 context.startActivity(intent)
 
-//                reduceState(
-//                    newState = current.copy(
-//                        developerOptionsItem = current.developerOptionsItem.copy(
-//                            completionState = ChecklistItemState.COMPLETE
-//                        )
-//                    )
-//                )
+                // New state will be reduced in ON_RESUME
             }
         }
     }
@@ -160,14 +149,8 @@ class ChecklistViewModel @Inject constructor(
                 }
 
                 context.startActivity(intent)
-//
-//                reduceState(
-//                    newState = current.copy(
-//                        mockLocationProviderItem = current.mockLocationProviderItem.copy(
-//                            completionState = ChecklistItemState.COMPLETE
-//                        )
-//                    )
-//                )
+
+                // New state will be reduced in ON_RESUME
             }
         }
     }
@@ -176,7 +159,9 @@ class ChecklistViewModel @Inject constructor(
         _uiState.update {
             if (
                 newState.fineLocationItem.completionState == ChecklistItemState.COMPLETE &&
+                newState.developerOptionsItem.completionState == ChecklistItemState.COMPLETE &&
                 newState.mockLocationProviderItem.completionState == ChecklistItemState.COMPLETE
+
             ) {
                 ChecklistState.Complete
             } else {
