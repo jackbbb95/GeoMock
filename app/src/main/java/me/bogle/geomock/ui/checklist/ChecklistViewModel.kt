@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,12 +17,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import me.bogle.geomock.location.MockLocationProviderManager
+import me.bogle.geomock.location.MockLocationProviderState
 import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_BUILD_NUMBER
 import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_FRAGMENT_ARG_KEY
 import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_MOCK_LOCATION_APP
 import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_SHOW_FRAGMENT_ARGUMENTS
+import javax.inject.Inject
 
-class ChecklistViewModel : ViewModel() {
+
+@HiltViewModel
+class ChecklistViewModel @Inject constructor(
+    private val mockLocationProviderManager: MockLocationProviderManager
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ChecklistState>(ChecklistState.Loading)
     val uiState: StateFlow<ChecklistState> = _uiState
@@ -34,15 +42,21 @@ class ChecklistViewModel : ViewModel() {
     fun performStartupCheck(context: Context) {
         viewModelScope.launch {
             _uiState.update { ChecklistState.Loading }
+            mockLocationProviderManager.checkMockLocationProviderState()
 
             val hasFineLocationPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
 
-            val isDeveloperOptionsEnabled = false // TODO
+            val isDeveloperOptionsEnabled = Settings.Secure.getInt(
+                context.contentResolver,
+                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+                0
+            ) == 1
 
-            val isSetAsMockLocationProvider = false // TODO
+            val isSetAsMockLocationProvider =
+                mockLocationProviderManager.state.value == MockLocationProviderState.IsSetAsMockLocationProvider
 
             _uiState.update {
                 ChecklistState.Incomplete(

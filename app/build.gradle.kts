@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.secrets.gradle.plugin)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.kotlin.ksp)
 }
 
 android {
@@ -72,7 +74,12 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
 
+    implementation(libs.androidx.hilt.navigation.fragment)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+
     implementation(libs.play.services.maps)
+    implementation(libs.gms.play.services.location)
     implementation(libs.maps.compose)
 
     testImplementation(libs.junit)

@@ -7,15 +7,15 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import me.bogle.geomock.util.OnLifecycleEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChecklistBottomSheet() {
-    val checklistViewModel: ChecklistViewModel = viewModel()
+    val checklistViewModel: ChecklistViewModel = hiltViewModel()
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(confirmValueChange = { false })
 
