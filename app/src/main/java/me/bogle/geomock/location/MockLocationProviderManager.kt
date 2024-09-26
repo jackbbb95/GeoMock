@@ -37,9 +37,7 @@ class MockLocationProviderManager @Inject constructor(
         }
 
         try {
-            client.setMockMode(true).addOnCompleteListener {
-                _state.update { MockLocationProviderState.IsPresumedToBeSetAsMockLocationProvider }
-            }.await()
+            client.setMockMode(true).await()
 
             client.setMockMode(false).addOnCompleteListener {
                 _state.update { MockLocationProviderState.IsSetAsMockLocationProvider }
@@ -57,6 +55,5 @@ sealed interface MockLocationProviderState {
     data object RequiresLocationPermission : MockLocationProviderState
     data object IsNotSetAsMockLocationProvider : MockLocationProviderState
     data object ErrorCheckingMockLocationProvider : MockLocationProviderState
-    data object IsPresumedToBeSetAsMockLocationProvider : MockLocationProviderState
     data object IsSetAsMockLocationProvider : MockLocationProviderState
 }

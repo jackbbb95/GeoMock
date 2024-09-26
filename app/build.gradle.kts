@@ -75,7 +75,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.coroutines.play.services)
-
+    implementation(libs.timber)
 
     implementation(libs.androidx.hilt.navigation.fragment)
     implementation(libs.hilt.android)

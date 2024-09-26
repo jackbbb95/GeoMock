@@ -2,9 +2,11 @@ package me.bogle.geomock.ui.home
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -13,10 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,10 +46,12 @@ fun HomeScreen() {
     val centerMarkerState = rememberMarkerState()
 
     // Set initial camera position to current location
-    var hasSetLocationOnInit by rememberSaveable { mutableStateOf(false) }
+    var hasSetLocationOnInit by remember { mutableStateOf(false) }
     val checkListState = checklistViewModel.uiState.collectAsStateWithLifecycle().value
-    if (!hasSetLocationOnInit && checkListState.hasLocationPermission()) {
-        LaunchedEffect(checklistViewModel) {
+    val mockLocationLatLng =
+        homeViewModel.mockLocationManager.currentMockLocation.collectAsStateWithLifecycle().value
+    LaunchedEffect(checkListState) {
+        if (!hasSetLocationOnInit && checkListState.hasLocationPermission()) {
             scope.launch {
                 homeViewModel.locationManager.getCurrentLocation()?.let { currentLatLng ->
                     val position = CameraPosition(currentLatLng, 10f, 0f, 0f)
@@ -59,15 +64,33 @@ fun HomeScreen() {
     }
 
     // Set marker position to match the center of the current camera position
-    centerMarkerState.position = cameraPositionState.position.target
+    centerMarkerState.position = mockLocationLatLng ?: cameraPositionState.position.target
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                text = { Text("Show bottom sheet") },
-                icon = { Icon(Icons.Filled.Add, contentDescription = "") },
-                onClick = { }
+                text = {
+                    Text(text = if (mockLocationLatLng == null) "Set mock location" else "Reset")
+                },
+                icon = {
+                    val icon =
+                        if (mockLocationLatLng == null) Icons.Filled.Add else Icons.Filled.Clear
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = ""
+                    )
+                },
+                onClick = {
+                    scope.launch {
+                        if (mockLocationLatLng == null) {
+                            val targetLocation = cameraPositionState.position.target
+                            homeViewModel.mockLocationManager.setMockLocation(targetLocation)
+                        } else {
+                            homeViewModel.mockLocationManager.unsetMockLocation()
+                        }
+                    }
+                }
             )
         }
     ) {
@@ -96,6 +119,17 @@ fun HomeScreen() {
                 cameraPositionState = cameraPositionState
             ) {
                 Marker(state = centerMarkerState)
+            }
+
+            Column {
+                Text(
+                    "Current marker location: ${centerMarkerState.position}",
+                    color = Color.Red
+                )
+                Text(
+                    "Current mock location: ${homeViewModel.mockLocationManager.currentMockLocation.collectAsStateWithLifecycle().value}",
+                    color = Color.Black
+                )
             }
         }
 

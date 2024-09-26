@@ -10,6 +10,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
+import timber.log.Timber
 import javax.inject.Inject
 
 class LocationManager @Inject constructor(
@@ -27,14 +28,16 @@ class LocationManager @Inject constructor(
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            Timber.i("Location permissions were expected, but were not granted")
             return null
         }
 
         return client.getCurrentLocation(
             CurrentLocationRequest.Builder().build(),
             CancellationTokenSource().token
-        ).await().let {
-            LatLng(it.latitude, it.longitude)
-        }
+        )
+            .addOnSuccessListener { Timber.i("Successfully retrieved current location: $it") }
+            .addOnFailureListener { Timber.e(it, "Failed to retrieve current location") }
+            .await()?.let { LatLng(it.latitude, it.longitude) }
     }
 }
