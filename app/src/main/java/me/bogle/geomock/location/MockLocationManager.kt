@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.os.Build
 import android.os.SystemClock
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
@@ -39,24 +40,35 @@ class MockLocationManager @Inject constructor(
         // Turn on mock mode
         client.setMockMode(true)
 
-        val location = Location(LocationManager.GPS_PROVIDER).apply {
-            latitude = locationLatLng.latitude
-            longitude = locationLatLng.longitude
-            accuracy = 10f
-            altitude = 0.0
-            time = System.currentTimeMillis()
-            elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+        // TODO this needs to be moved to a background service so that it can periodically update location
+
+        fun setMockLocationForProvider(provider: String) {
+            val location = Location(provider).apply {
+                latitude = locationLatLng.latitude
+                longitude = locationLatLng.longitude
+                accuracy = 10f
+                altitude = 0.0
+                time = System.currentTimeMillis()
+                elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
+            }
+
+            client.setMockLocation(location)
+                .addOnSuccessListener {
+                    _currentMockLocation.update { locationLatLng }
+                    Timber.i("Set mock location to $locationLatLng for provider $provider")
+                }
+                .addOnFailureListener {
+                    _currentMockLocation.update { null }
+                    Timber.e(it, "Failed to set mock location to $locationLatLng for provider $provider")
+                }
         }
 
-        client.setMockLocation(location)
-            .addOnSuccessListener {
-                _currentMockLocation.update { locationLatLng }
-                Timber.i("Set mock location to: $locationLatLng")
-            }
-            .addOnFailureListener {
-                _currentMockLocation.update { null }
-                Timber.e(it, "Failed to set mock location to : $locationLatLng")
-            }
+        setMockLocationForProvider(LocationManager.GPS_PROVIDER)
+        setMockLocationForProvider(LocationManager.NETWORK_PROVIDER)
+        setMockLocationForProvider(LocationManager.PASSIVE_PROVIDER)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            setMockLocationForProvider(LocationManager.FUSED_PROVIDER)
+        }
     }
 
     fun unsetMockLocation() {
