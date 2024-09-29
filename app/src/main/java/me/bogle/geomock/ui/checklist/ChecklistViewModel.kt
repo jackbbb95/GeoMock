@@ -59,9 +59,9 @@ class ChecklistViewModel @Inject constructor(
                 mockLocationProviderManager.state.value == MockLocationProviderState.IsSetAsMockLocationProvider
 
             val state = ChecklistState.Incomplete(
-                fineLocationItem = ChecklistItem(
-                    type = ChecklistItemType.LOCATION,
-                    description = "Fine location access permission is required",
+                permissionsItem = ChecklistItem(
+                    type = ChecklistItemType.PERMISSIONS,
+                    description = "Location permissions are required",
                     completionState = if (hasFineLocationPermission) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
                 ),
                 developerOptionsItem = ChecklistItem(
@@ -85,27 +85,27 @@ class ChecklistViewModel @Inject constructor(
     fun handleChecklistItemAction(
         context: Context,
         checklistItemType: ChecklistItemType,
-        onRequestLocationPermission: () -> Unit
+        onRequestPermissions: () -> Unit
     ) {
         when (checklistItemType) {
-            ChecklistItemType.LOCATION -> handleAskingForFineLocation(onRequestLocationPermission)
+            ChecklistItemType.PERMISSIONS -> handleAskingForPermissions(onRequestPermissions)
             ChecklistItemType.DEVELOPER_SETTINGS -> handleEnablingDeveloperOptions(context)
             ChecklistItemType.MOCK_LOCATION_PROVIDER -> handleSettingMockLocationProvider(context)
         }
     }
 
-    private fun handleAskingForFineLocation(onRequestLocationPermission: () -> Unit) {
+    private fun handleAskingForPermissions(onRequestPermissions: () -> Unit) {
         viewModelScope.launch {
             (_uiState.value as? ChecklistState.Incomplete)?.let { current ->
                 reduceState(
                     newState = current.copy(
-                        fineLocationItem = current.fineLocationItem.copy(
+                        permissionsItem = current.permissionsItem.copy(
                             completionState = ChecklistItemState.IN_PROGRESS
                         )
                     )
                 )
 
-                onRequestLocationPermission()
+                onRequestPermissions()
 
                 // New state will be reduced in ON_RESUME
             }
@@ -161,7 +161,7 @@ class ChecklistViewModel @Inject constructor(
     private fun reduceState(newState: ChecklistState.Incomplete) {
         _uiState.update {
             if (
-                newState.fineLocationItem.completionState == ChecklistItemState.COMPLETE &&
+                newState.permissionsItem.completionState == ChecklistItemState.COMPLETE &&
                 newState.developerOptionsItem.completionState == ChecklistItemState.COMPLETE &&
                 newState.mockLocationProviderItem.completionState == ChecklistItemState.COMPLETE
 
@@ -177,7 +177,7 @@ class ChecklistViewModel @Inject constructor(
 sealed interface ChecklistState {
     data object Loading : ChecklistState
     data class Incomplete(
-        val fineLocationItem: ChecklistItem,
+        val permissionsItem: ChecklistItem,
         val developerOptionsItem: ChecklistItem,
         val mockLocationProviderItem: ChecklistItem
     ) : ChecklistState
@@ -192,7 +192,7 @@ data class ChecklistItem(
 )
 
 enum class ChecklistItemType {
-    LOCATION, DEVELOPER_SETTINGS, MOCK_LOCATION_PROVIDER
+    PERMISSIONS, DEVELOPER_SETTINGS, MOCK_LOCATION_PROVIDER
 }
 
 enum class ChecklistItemState {

@@ -88,7 +88,7 @@ private fun ChecklistPreview() = GeoMockThemedPreview {
     Checklist(
         checklistItems = listOf(
             ChecklistItem(
-                type = ChecklistItemType.LOCATION,
+                type = ChecklistItemType.PERMISSIONS,
                 description = "Fine location access permission is required",
                 completionState = ChecklistItemState.COMPLETE
             ),

@@ -1,9 +1,11 @@
 package me.bogle.geomock.ui.home
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
@@ -20,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,6 +34,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.launch
+import me.bogle.geomock.location.MockLocationService
 import me.bogle.geomock.ui.checklist.ChecklistBottomSheet
 import me.bogle.geomock.ui.checklist.ChecklistViewModel
 import me.bogle.geomock.ui.checklist.hasLocationPermission
@@ -41,6 +45,7 @@ fun HomeScreen() {
     val checklistViewModel = hiltViewModel<ChecklistViewModel>()
     val homeViewModel = hiltViewModel<HomeViewModel>()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val cameraPositionState = rememberCameraPositionState()
     val centerMarkerState = rememberMarkerState()
@@ -85,16 +90,31 @@ fun HomeScreen() {
                     scope.launch {
                         if (mockLocationLatLng == null) {
                             val targetLocation = cameraPositionState.position.target
-                            homeViewModel.mockLocationManager.setMockLocation(targetLocation)
+
+                            val intent = Intent(context, MockLocationService::class.java).apply {
+                                putExtra(
+                                    MockLocationService.LATITUDE_EXTRA,
+                                    targetLocation.latitude
+                                )
+                                putExtra(
+                                    MockLocationService.LONGITUDE_EXTRA,
+                                    targetLocation.longitude
+                                )
+                            }
+                            context.startForegroundService(intent)
                         } else {
-                            homeViewModel.mockLocationManager.unsetMockLocation()
+                            val intent = Intent(context, MockLocationService::class.java)
+                            context.stopService(intent)
                         }
                     }
                 }
             )
         }
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(top = it.calculateTopPadding())
+        ) {
             GoogleMap(
                 uiSettings = MapUiSettings(
                     tiltGesturesEnabled = false,

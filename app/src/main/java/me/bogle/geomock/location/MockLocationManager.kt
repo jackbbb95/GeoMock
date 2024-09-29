@@ -16,7 +16,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import timber.log.Timber
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class MockLocationManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
@@ -40,8 +42,6 @@ class MockLocationManager @Inject constructor(
         // Turn on mock mode
         client.setMockMode(true)
 
-        // TODO this needs to be moved to a background service so that it can periodically update location
-
         fun setMockLocationForProvider(provider: String) {
             val location = Location(provider).apply {
                 latitude = locationLatLng.latitude
@@ -59,7 +59,10 @@ class MockLocationManager @Inject constructor(
                 }
                 .addOnFailureListener {
                     _currentMockLocation.update { null }
-                    Timber.e(it, "Failed to set mock location to $locationLatLng for provider $provider")
+                    Timber.e(
+                        it,
+                        "Failed to set mock location to $locationLatLng for provider $provider"
+                    )
                 }
         }
 

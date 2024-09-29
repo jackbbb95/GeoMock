@@ -1,5 +1,6 @@
 package me.bogle.geomock.ui.checklist
 
+import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,10 +39,11 @@ fun ChecklistBottomSheet() {
     val sheetState = rememberModalBottomSheetState(confirmValueChange = if (checklistState == ChecklistState.Complete) { { true } } else { { false } })
     val scope = rememberCoroutineScope()
 
-    val locationPermissionState = rememberMultiplePermissionsState(
-        listOf(
+    val runtimePermissionState = rememberMultiplePermissionsState(
+        listOfNotNull(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
-            android.Manifest.permission.ACCESS_COARSE_LOCATION
+            android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) android.Manifest.permission.POST_NOTIFICATIONS else null
         )
     )
 
@@ -81,7 +83,7 @@ fun ChecklistBottomSheet() {
                     is ChecklistState.Incomplete -> {
                         Checklist(
                             checklistItems = listOf(
-                                state.fineLocationItem,
+                                state.permissionsItem,
                                 state.developerOptionsItem,
                                 state.mockLocationProviderItem
                             ),
@@ -89,7 +91,7 @@ fun ChecklistBottomSheet() {
                                 checklistViewModel.handleChecklistItemAction(
                                     context = context,
                                     checklistItemType = item.type,
-                                    onRequestLocationPermission = { locationPermissionState.launchMultiplePermissionRequest() }
+                                    onRequestPermissions = { runtimePermissionState.launchMultiplePermissionRequest() }
                                 )
                             }
                         )
