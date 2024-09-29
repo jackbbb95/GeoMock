@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationCompat.Action
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.maps.model.LatLng
@@ -26,6 +27,11 @@ class MockLocationService : LifecycleService() {
     lateinit var mockLocationManager: MockLocationManager
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_CLOSE) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         startForeground(NOTIFICATION_ID, buildNotification())
 
         val mockLatitude = intent?.getDoubleExtra(LATITUDE_EXTRA, 0.0)
@@ -72,12 +78,27 @@ class MockLocationService : LifecycleService() {
                 PendingIntent.getActivity(applicationContext, 0, this, PendingIntent.FLAG_IMMUTABLE)
             }
 
+        val stopPendingIntent = Intent(this, MockLocationService::class.java)
+            .apply {
+                action = ACTION_CLOSE
+            }.run {
+                PendingIntent.getService(
+                    applicationContext,
+                    0,
+                    this,
+                    PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+
+        val stopAction = Action(R.drawable.ic_launcher_foreground, "Stop", stopPendingIntent)
+
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("GeoMock is mocking your location")
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setOngoing(true)
+            .addAction(stopAction)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
     }
@@ -88,5 +109,6 @@ class MockLocationService : LifecycleService() {
         const val NOTIFICATION_CHANNEL_ID = "mock_location_channel_id"
         const val LATITUDE_EXTRA = "latitude"
         const val LONGITUDE_EXTRA = "longitude"
+        const val ACTION_CLOSE = "action_close"
     }
 }
