@@ -38,6 +38,7 @@ import me.bogle.geomock.location.MockLocationService
 import me.bogle.geomock.ui.checklist.ChecklistBottomSheet
 import me.bogle.geomock.ui.checklist.ChecklistViewModel
 import me.bogle.geomock.ui.checklist.hasLocationPermission
+import me.bogle.geomock.util.prettyPrint
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -110,10 +111,11 @@ fun HomeScreen() {
                 }
             )
         }
-    ) {
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(top = it.calculateTopPadding())
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = padding.calculateTopPadding())
         ) {
             GoogleMap(
                 uiSettings = MapUiSettings(
@@ -143,13 +145,16 @@ fun HomeScreen() {
 
             Column {
                 Text(
-                    "Current marker location: ${centerMarkerState.position}",
+                    "Current marker location: ${centerMarkerState.position.prettyPrint()}",
                     color = Color.Red
                 )
-                Text(
-                    "Current mock location: ${homeViewModel.mockLocationManager.currentMockLocation.collectAsStateWithLifecycle().value}",
-                    color = Color.Black
-                )
+
+                mockLocationLatLng?.let {
+                    Text(
+                        "Current mock location: ${it.prettyPrint()}",
+                        color = Color.Black
+                    )
+                }
             }
         }
 
