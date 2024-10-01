@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.GpsOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,7 +47,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.launch
 import me.bogle.geomock.location.MockLocationService
-import me.bogle.geomock.ui.checklist.ChecklistBottomSheet
+import me.bogle.geomock.ui.checklist.ChecklistDialog
 import me.bogle.geomock.ui.checklist.ChecklistViewModel
 import me.bogle.geomock.ui.checklist.hasLocationPermission
 import me.bogle.geomock.util.prettyPrint
@@ -93,9 +94,10 @@ fun HomeScreen() {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             Column(
-                horizontalAlignment = Alignment.End,
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Card(
@@ -173,7 +175,10 @@ fun HomeScreen() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(
+                    top = padding.calculateTopPadding(),
+                    bottom = padding.calculateBottomPadding()
+                )
         ) {
             GoogleMap(
                 uiSettings = MapUiSettings(
@@ -198,11 +203,11 @@ fun HomeScreen() {
                 },
                 cameraPositionState = cameraPositionState
             ) {
-                Marker(state = centerMarkerState)
+                Marker(state = centerMarkerState, flat = true)
             }
         }
 
-        ChecklistBottomSheet()
+        ChecklistDialog()
     }
 }
 

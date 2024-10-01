@@ -1,7 +1,6 @@
 package me.bogle.geomock.ui.checklist
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,28 +18,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import me.bogle.geomock.ui.GeoMockPreview
 import me.bogle.geomock.ui.GeoMockThemedPreview
 
 @Composable
-fun Checklist(
+fun ChecklistItems(
     checklistItems: List<ChecklistItem>,
     onClick: (ChecklistItem) -> Unit,
 ) {
-    Column(
-        modifier = Modifier.padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        checklistItems.forEach { item ->
-            ChecklistCard(
-                modifier = Modifier.fillMaxWidth(),
-                description = item.description,
-                completionState = item.completionState,
-                onClick = { onClick(item) }
-            )
-        }
+    checklistItems.forEach { item ->
+        ChecklistCard(
+            modifier = Modifier.fillMaxWidth(),
+            description = item.description,
+            completionState = item.completionState,
+            onClick = { onClick(item) }
+        )
     }
 }
 
@@ -51,11 +46,13 @@ private fun ChecklistCard(
     completionState: ChecklistItemState,
     onClick: () -> Unit
 ) {
+    val isEnabled = completionState != ChecklistItemState.COMPLETE
+
     Card(
         modifier = modifier,
         onClick = onClick,
-        enabled = completionState == ChecklistItemState.INCOMPLETE,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        enabled = isEnabled,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
     ) {
         Row(
             modifier = Modifier
@@ -65,9 +62,13 @@ private fun ChecklistCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
+            val foregroundColor =
+                if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
             Text(
                 modifier = Modifier.weight(1f),
-                text = description
+                text = description,
+                color = foregroundColor,
+                style = if (isEnabled) TextStyle.Default else TextStyle(textDecoration = TextDecoration.LineThrough)
             )
 
             when (completionState) {
@@ -76,7 +77,7 @@ private fun ChecklistCard(
                         modifier = Modifier.padding(end = 8.dp),
                         imageVector = Icons.Default.Error,
                         contentDescription = "",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = foregroundColor
                     )
                 }
 
@@ -93,7 +94,7 @@ private fun ChecklistCard(
                         modifier = Modifier.padding(end = 8.dp),
                         imageVector = Icons.Default.Check,
                         contentDescription = "",
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = foregroundColor
                     )
                 }
             }
@@ -104,7 +105,7 @@ private fun ChecklistCard(
 @GeoMockPreview
 @Composable
 private fun ChecklistPreview() = GeoMockThemedPreview {
-    Checklist(
+    ChecklistItems(
         checklistItems = listOf(
             ChecklistItem(
                 type = ChecklistItemType.PERMISSIONS,

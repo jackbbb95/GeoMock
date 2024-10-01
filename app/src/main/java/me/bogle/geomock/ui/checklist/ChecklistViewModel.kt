@@ -42,6 +42,7 @@ class ChecklistViewModel @Inject constructor(
     fun performStartupCheck(context: Context) {
         viewModelScope.launch {
             _uiState.update { ChecklistState.Loading }
+
             mockLocationProviderManager.checkMockLocationProviderState()
 
             val hasFineLocationPermission = ContextCompat.checkSelfPermission(
