@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -36,7 +37,12 @@ fun ChecklistBottomSheet() {
     val context = LocalContext.current
     val checklistState = checklistViewModel.uiState.collectAsStateWithLifecycle().value
     var openBottomSheet by rememberSaveable { mutableStateOf(true) }
-    val sheetState = rememberModalBottomSheetState(confirmValueChange = if (checklistState == ChecklistState.Complete) { { true } } else { { false } })
+    val sheetState = rememberModalBottomSheetState(
+        confirmValueChange = if (checklistState == ChecklistState.Complete) {
+            { true }
+        } else {
+            { false }
+        })
     val scope = rememberCoroutineScope()
 
     val runtimePermissionState = rememberMultiplePermissionsState(
@@ -58,7 +64,8 @@ fun ChecklistBottomSheet() {
             sheetState = sheetState,
             properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
             dragHandle = null,
-            onDismissRequest = {}
+            onDismissRequest = {},
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ) {
             AnimatedContent(
                 modifier = Modifier
