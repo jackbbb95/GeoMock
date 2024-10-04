@@ -66,7 +66,7 @@ class MockLocationService : LifecycleService() {
         val channel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
             "Channel used to notify the user of their continuously mocked location",
-            NotificationManager.IMPORTANCE_HIGH
+            NotificationManager.IMPORTANCE_LOW
         )
 
         notificationManager.createNotificationChannel(channel)

@@ -3,6 +3,11 @@ package me.bogle.geomock.ui.home
 import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +20,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.GpsOff
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,10 +47,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.launch
@@ -50,6 +60,7 @@ import me.bogle.geomock.location.MockLocationService
 import me.bogle.geomock.ui.checklist.ChecklistDialog
 import me.bogle.geomock.ui.checklist.ChecklistViewModel
 import me.bogle.geomock.ui.checklist.hasLocationPermission
+import me.bogle.geomock.util.AnimationUtils
 import me.bogle.geomock.util.prettyPrint
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -61,7 +72,7 @@ fun HomeScreen() {
     val context = LocalContext.current
 
     val cameraPositionState = rememberCameraPositionState()
-    val centerMarkerState = rememberMarkerState()
+    val mainMarkerState = rememberMarkerState()
 
     // Set initial camera position to current location
     var hasSetLocationOnInit by remember { mutableStateOf(false) }
@@ -72,6 +83,11 @@ fun HomeScreen() {
         .currentMockLocation
         .collectAsStateWithLifecycle()
         .value
+
+    val starredLocationMarkers = homeViewModel.getStarredLocations()
+        .collectAsStateWithLifecycle(emptyList())
+        .value
+        .map { MarkerState.invoke(position = it) }
 
     // Set the camera position to the current *real* location of the user
     LaunchedEffect(checkListState) {
@@ -87,9 +103,15 @@ fun HomeScreen() {
         }
     }
 
-    // Set marker position to match the center of the current camera position
+    // Set marker position to match the center of the current camera position or the current mock location
     LaunchedEffect(cameraPositionState.position.target) {
-        centerMarkerState.position = mockLocationLatLng ?: cameraPositionState.position.target
+        mainMarkerState.position = mockLocationLatLng ?: cameraPositionState.position.target
+    }
+
+    LaunchedEffect(mockLocationLatLng == null) {
+        if (mockLocationLatLng == null) {
+            mainMarkerState.position = cameraPositionState.position.target
+        }
     }
 
     Scaffold(
@@ -118,20 +140,17 @@ fun HomeScreen() {
                                 contentDescription = "location icon"
                             )
 
-                            val text = (it ?: centerMarkerState.position).prettyPrint()
+                            val text = (it ?: mainMarkerState.position).prettyPrint()
                             Text(
                                 text = text,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-
-
                         }
                     }
                 }
-
                 ExtendedFloatingActionButton(
                     text = {
-                        AnimatedContent(mockLocationLatLng, label = "floating action button") {
+                        AnimatedContent(mockLocationLatLng, label = "mock location fab") {
                             val text = it?.let { "Reset" } ?: "Set mock location"
                             Text(text = text)
                         }
@@ -184,7 +203,9 @@ fun HomeScreen() {
                 uiSettings = MapUiSettings(
                     tiltGesturesEnabled = false,
                     myLocationButtonEnabled = false,
+                    mapToolbarEnabled = false,
                     zoomControlsEnabled = false,
+                    rotationGesturesEnabled = false,
                     scrollGesturesEnabled = true,
                     scrollGesturesEnabledDuringRotateOrZoom = true
                 ),
@@ -201,9 +222,53 @@ fun HomeScreen() {
                         cameraPositionState.animate(cameraUpdate)
                     }
                 },
-                cameraPositionState = cameraPositionState
+                cameraPositionState = cameraPositionState,
             ) {
-                Marker(state = centerMarkerState, flat = true)
+                // Show starred markers
+                starredLocationMarkers.forEach {
+                    Marker(
+                        state = it,
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
+                    )
+                }
+
+                // Show main marker
+                Marker(
+                    state = mainMarkerState,
+                    alpha = if (mockLocationLatLng != null) AnimationUtils.fadeInAndOutInfinitelyAsFloat else 1f,
+                    zIndex = 1f
+                )
+            }
+
+            AnimatedVisibility(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp),
+                visible = mockLocationLatLng != null,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                val isStarred = starredLocationMarkers.any { it.position == mockLocationLatLng }
+                FloatingActionButton(
+                    onClick = {
+                        mockLocationLatLng?.let {
+                            if (isStarred) {
+                                homeViewModel.removeLocationFromStarred(it)
+                            } else {
+                                homeViewModel.addLocationToStarred(it)
+                            }
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (isStarred) {
+                            Icons.Default.Star
+                        } else {
+                            Icons.Default.StarOutline
+                        },
+                        contentDescription = "star"
+                    )
+                }
             }
         }
 

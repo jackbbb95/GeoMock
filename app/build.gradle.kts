@@ -32,6 +32,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug") // TODO
         }
     }
     compileOptions {
@@ -78,6 +79,7 @@ dependencies {
     implementation(libs.accompanist.permissions)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.timber)
+    implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.androidx.hilt.navigation.fragment)
     implementation(libs.hilt.android)
