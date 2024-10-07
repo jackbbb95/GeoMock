@@ -248,14 +248,14 @@ fun HomeScreen() {
                 mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM
             ) {
                 // Show starred markers (minus the currently mocked one)
-                starredLocationMarkers
-                    .filterNot { it.position == mockLocationLatLng }
-                    .forEach {
+                if (mockLocationLatLng == null) {
+                    starredLocationMarkers.forEach {
                         Marker(
                             state = it,
                             icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
                         )
                     }
+                }
 
                 // Show main marker
                 Marker(
