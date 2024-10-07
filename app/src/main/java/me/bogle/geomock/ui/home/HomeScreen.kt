@@ -49,18 +49,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.maps.android.compose.CameraMoveStartedReason
+import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.bogle.geomock.location.MockLocationService
 import me.bogle.geomock.ui.checklist.ChecklistDialog
 import me.bogle.geomock.ui.checklist.ChecklistViewModel
 import me.bogle.geomock.ui.checklist.hasLocationPermission
-import me.bogle.geomock.util.AnimationUtils
 import me.bogle.geomock.util.prettyPrint
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -70,12 +72,11 @@ fun HomeScreen() {
     val homeViewModel = hiltViewModel<HomeViewModel>()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-
     val cameraPositionState = rememberCameraPositionState()
     val mainMarkerState = rememberMarkerState()
 
     // Set initial camera position to current location
-    var hasSetLocationOnInit by remember { mutableStateOf(false) }
+    var hasSetLocationOnInitOrUserInteracted by remember { mutableStateOf(false) }
     val checkListState = checklistViewModel.uiState
         .collectAsStateWithLifecycle()
         .value
@@ -89,17 +90,37 @@ fun HomeScreen() {
         .value
         .map { MarkerState.invoke(position = it) }
 
-    // Set the camera position to the current *real* location of the user
+    LaunchedEffect(Unit) {
+        // Set camera position to last known location (if available), on startup
+        homeViewModel.getLastRealLocation().first()?.let { currentLatLng ->
+            val position = CameraPosition(currentLatLng, 10f, 0f, 0f)
+            val cameraUpdate = CameraUpdateFactory.newCameraPosition(position)
+            cameraPositionState.animate(cameraUpdate)
+        }
+    }
+
     LaunchedEffect(checkListState) {
-        if (!hasSetLocationOnInit && checkListState.hasLocationPermission()) {
+        if (!hasSetLocationOnInitOrUserInteracted && checkListState.hasLocationPermission()) {
             scope.launch {
+                // Check the current *real* location and set the camera position, but only
+                // if the user has not interacted with the map yet
                 homeViewModel.locationManager.getCurrentLocation()?.let { currentLatLng ->
-                    val position = CameraPosition(currentLatLng, 10f, 0f, 0f)
-                    val cameraUpdate = CameraUpdateFactory.newCameraPosition(position)
-                    cameraPositionState.animate(cameraUpdate)
-                    hasSetLocationOnInit = true
+                    if (!hasSetLocationOnInitOrUserInteracted) {
+                        val position = CameraPosition(currentLatLng, 10f, 0f, 0f)
+                        val cameraUpdate = CameraUpdateFactory.newCameraPosition(position)
+                        cameraPositionState.animate(cameraUpdate)
+                        homeViewModel.saveLastRealLocation(currentLatLng)
+                        hasSetLocationOnInitOrUserInteracted = true
+                    }
                 }
             }
+        }
+    }
+
+    // Cancel any automatic camera panning if user has interacted with the map already
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (!hasSetLocationOnInitOrUserInteracted && cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) {
+            hasSetLocationOnInitOrUserInteracted = true
         }
     }
 
@@ -108,7 +129,8 @@ fun HomeScreen() {
         mainMarkerState.position = mockLocationLatLng ?: cameraPositionState.position.target
     }
 
-    LaunchedEffect(mockLocationLatLng == null) {
+    // Reset camera position to the center of the camera state after mocking is finished
+    LaunchedEffect(mockLocationLatLng) {
         if (mockLocationLatLng == null) {
             mainMarkerState.position = cameraPositionState.position.target
         }
@@ -223,20 +245,26 @@ fun HomeScreen() {
                     }
                 },
                 cameraPositionState = cameraPositionState,
+                mapColorScheme = ComposeMapColorScheme.FOLLOW_SYSTEM
             ) {
-                // Show starred markers
-                starredLocationMarkers.forEach {
-                    Marker(
-                        state = it,
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
-                    )
-                }
+                // Show starred markers (minus the currently mocked one)
+                starredLocationMarkers
+                    .filterNot { it.position == mockLocationLatLng }
+                    .forEach {
+                        Marker(
+                            state = it,
+                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)
+                        )
+                    }
 
                 // Show main marker
                 Marker(
                     state = mainMarkerState,
-                    alpha = if (mockLocationLatLng != null) AnimationUtils.fadeInAndOutInfinitelyAsFloat else 1f,
-                    zIndex = 1f
+                    icon = if (mockLocationLatLng != null) {
+                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+                    } else {
+                        BitmapDescriptorFactory.defaultMarker()
+                    }
                 )
             }
 

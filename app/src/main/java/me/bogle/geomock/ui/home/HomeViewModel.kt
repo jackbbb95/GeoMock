@@ -27,6 +27,22 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     // TODO: Use a real database
+
+    fun saveLastRealLocation(latLng: LatLng) {
+        viewModelScope.launch {
+            context.dataStore.edit { settings ->
+                settings[LAST_LOCATION] = latLng.toPreferenceString()
+            }
+        }
+    }
+
+    fun getLastRealLocation(): Flow<LatLng?> =
+        context.dataStore.data
+            .distinctUntilChanged()
+            .map { settings ->
+                settings[LAST_LOCATION]?.toLatLng()
+            }
+
     fun addLocationToStarred(latLng: LatLng) {
         viewModelScope.launch {
             Timber.d("Adding $latLng to starred locations")
@@ -55,18 +71,20 @@ class HomeViewModel @Inject constructor(
 
     fun getStarredLocations(): Flow<List<LatLng>> =
         context.dataStore.data
-            .distinctUntilChanged()
             .map { settings ->
                 settings[STARRED_LOCATIONS].orEmpty()
                     .split(DELIMITER)
                     .filter { it.isNotEmpty() }
                     .map { it.toLatLng() }
-            }.onEach { Timber.d("Starred Location Read: $it") }
+            }
+            .distinctUntilChanged()
+            .onEach { Timber.d("Starred Location Read: $it") }
 
     companion object {
 
         private const val DELIMITER = ";"
         private val STARRED_LOCATIONS = stringPreferencesKey("starred_locations")
+        private val LAST_LOCATION = stringPreferencesKey("last_locations")
     }
 }
 
