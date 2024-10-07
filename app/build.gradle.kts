@@ -80,6 +80,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.timber)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.core.splashscreen)
 
     implementation(libs.androidx.hilt.navigation.fragment)
     implementation(libs.hilt.android)

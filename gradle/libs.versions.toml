@@ -1,6 +1,7 @@
 [versions]
 accompanistPermissions = "0.36.0"
 agp = "8.6.1"
+coreSplashscreen = "1.0.1"
 datastorePreferences = "1.1.1"
 hiltAndroid = "2.51.1"
 hiltNavigationCompose = "1.2.0"
@@ -26,6 +27,7 @@ materialIcons = "1.7.2"
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-hilt-navigation-fragment = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-lifecycle-service = { module = "androidx.lifecycle:lifecycle-service", version.ref = "lifecycleRuntimeKtx" }
