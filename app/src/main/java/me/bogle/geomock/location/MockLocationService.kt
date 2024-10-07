@@ -6,6 +6,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+import android.graphics.drawable.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.EditLocation
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.Action
 import androidx.lifecycle.LifecycleService
@@ -90,10 +93,10 @@ class MockLocationService : LifecycleService() {
                 )
             }
 
-        val stopAction = Action(R.drawable.ic_launcher_foreground, "Stop", stopPendingIntent)
+        val stopAction = Action(R.drawable.ic_notification, "Stop", stopPendingIntent)
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("GeoMock is mocking your location")
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
