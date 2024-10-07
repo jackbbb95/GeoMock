@@ -1,6 +1,7 @@
 package me.bogle.geomock.ui.home
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -49,7 +50,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraMoveStartedReason
+import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.ComposeMapColorScheme
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
@@ -57,6 +60,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import me.bogle.geomock.location.MockLocationService
@@ -140,77 +144,13 @@ fun HomeScreen() {
         modifier = Modifier.fillMaxSize(),
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Card(
-                    shape = FloatingActionButtonDefaults.extendedFabShape,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    elevation = CardDefaults.elevatedCardElevation()
-                ) {
-                    AnimatedContent(mockLocationLatLng, label = "") {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val icon = it?.let { Icons.Default.GpsFixed } ?: Icons.Default.GpsOff
-                            Icon(
-                                modifier = Modifier.size(14.dp),
-                                imageVector = icon,
-                                contentDescription = "location icon"
-                            )
-
-                            val text = (it ?: mainMarkerState.position).prettyPrint()
-                            Text(
-                                text = text,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-                ExtendedFloatingActionButton(
-                    text = {
-                        AnimatedContent(mockLocationLatLng, label = "mock location fab") {
-                            val text = it?.let { "Reset" } ?: "Set mock location"
-                            Text(text = text)
-                        }
-                    },
-                    icon = {
-                        AnimatedContent(mockLocationLatLng, label = "floating action button") {
-                            val icon = it?.let { Icons.Filled.Clear } ?: Icons.Filled.Add
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = ""
-                            )
-                        }
-                    },
-                    onClick = {
-                        scope.launch {
-                            if (mockLocationLatLng == null) {
-                                val targetLocation = cameraPositionState.position.target
-
-                                val intent =
-                                    Intent(context, MockLocationService::class.java).apply {
-                                        putExtra(
-                                            MockLocationService.LATITUDE_EXTRA,
-                                            targetLocation.latitude
-                                        )
-                                        putExtra(
-                                            MockLocationService.LONGITUDE_EXTRA,
-                                            targetLocation.longitude
-                                        )
-                                    }
-                                context.startForegroundService(intent)
-                            } else {
-                                val intent = Intent(context, MockLocationService::class.java)
-                                context.stopService(intent)
-                            }
-                        }
-                    }
-                )
-            }
+            FloatingActionButtonLayout(
+                context = context,
+                mockLocationLatLng = mockLocationLatLng,
+                mainMarkerState = mainMarkerState,
+                cameraPositionState = cameraPositionState,
+                scope = scope
+            )
         }
     ) { padding ->
         Box(
@@ -301,6 +241,87 @@ fun HomeScreen() {
         }
 
         ChecklistDialog()
+    }
+}
+
+@Composable
+private fun FloatingActionButtonLayout(
+    context: Context,
+    mockLocationLatLng: LatLng?,
+    mainMarkerState: MarkerState,
+    cameraPositionState: CameraPositionState,
+    scope: CoroutineScope
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Card(
+            shape = FloatingActionButtonDefaults.extendedFabShape,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+            elevation = CardDefaults.elevatedCardElevation()
+        ) {
+            AnimatedContent(mockLocationLatLng, label = "") {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val icon = it?.let { Icons.Default.GpsFixed } ?: Icons.Default.GpsOff
+                    Icon(
+                        modifier = Modifier.size(14.dp),
+                        imageVector = icon,
+                        contentDescription = "location icon"
+                    )
+
+                    val text = (it ?: mainMarkerState.position).prettyPrint()
+                    Text(
+                        text = text,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+        ExtendedFloatingActionButton(
+            text = {
+                AnimatedContent(mockLocationLatLng, label = "mock location fab") {
+                    val text = it?.let { "Reset" } ?: "Set mock location"
+                    Text(text = text)
+                }
+            },
+            icon = {
+                AnimatedContent(mockLocationLatLng, label = "floating action button") {
+                    val icon = it?.let { Icons.Filled.Clear } ?: Icons.Filled.Add
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = ""
+                    )
+                }
+            },
+            onClick = {
+                scope.launch {
+                    if (mockLocationLatLng == null) {
+                        val targetLocation = cameraPositionState.position.target
+
+                        val intent =
+                            Intent(context, MockLocationService::class.java).apply {
+                                putExtra(
+                                    MockLocationService.LATITUDE_EXTRA,
+                                    targetLocation.latitude
+                                )
+                                putExtra(
+                                    MockLocationService.LONGITUDE_EXTRA,
+                                    targetLocation.longitude
+                                )
+                            }
+                        context.startForegroundService(intent)
+                    } else {
+                        val intent = Intent(context, MockLocationService::class.java)
+                        context.stopService(intent)
+                    }
+                }
+            }
+        )
     }
 }
 
