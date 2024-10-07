@@ -1,6 +1,7 @@
 package me.bogle.geomock.ui.checklist
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,7 +48,10 @@ private fun ChecklistCard(
     completionState: ChecklistItemState,
     onClick: () -> Unit
 ) {
-    val isEnabled = completionState != ChecklistItemState.COMPLETE
+    val isEnabled = completionState == ChecklistItemState.INCOMPLETE ||
+            completionState == ChecklistItemState.IN_PROGRESS
+
+    val isComplete = completionState == ChecklistItemState.COMPLETE
 
     Card(
         modifier = modifier,
@@ -68,7 +73,7 @@ private fun ChecklistCard(
                 modifier = Modifier.weight(1f),
                 text = description,
                 color = foregroundColor,
-                style = if (isEnabled) TextStyle.Default else TextStyle(textDecoration = TextDecoration.LineThrough)
+                style = if (isComplete) TextStyle(textDecoration = TextDecoration.LineThrough) else TextStyle.Default
             )
 
             when (completionState) {
@@ -85,7 +90,17 @@ private fun ChecklistCard(
                     CircularProgressIndicator(
                         modifier = Modifier
                             .padding(end = 8.dp)
-                            .size(24.dp)
+                            .size(24.dp),
+                        color = foregroundColor
+                    )
+                }
+
+                ChecklistItemState.LOCKED -> {
+                    Icon(
+                        modifier = Modifier.padding(end = 8.dp),
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "",
+                        tint = foregroundColor
                     )
                 }
 
@@ -105,24 +120,38 @@ private fun ChecklistCard(
 @GeoMockPreview
 @Composable
 private fun ChecklistPreview() = GeoMockThemedPreview {
-    ChecklistItems(
-        checklistItems = listOf(
-            ChecklistItem(
-                type = ChecklistItemType.PERMISSIONS,
-                description = "Fine location access permission is required",
-                completionState = ChecklistItemState.COMPLETE
-            ),
-            ChecklistItem(
-                type = ChecklistItemType.DEVELOPER_SETTINGS,
-                description = "Developer options must be enabled",
-                completionState = ChecklistItemState.IN_PROGRESS
-            ),
-            ChecklistItem(
-                type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
-                description = "GeoMock must be set as the system's mock location provider",
-                completionState = ChecklistItemState.INCOMPLETE
-            )
+    Column(
+        modifier = Modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(
+            16.dp,
+            Alignment.CenterVertically
         ),
-        onClick = { }
-    )
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        ChecklistItems(
+            checklistItems = listOf(
+                ChecklistItem(
+                    type = ChecklistItemType.PERMISSIONS,
+                    description = "Fine location access permission is required",
+                    completionState = ChecklistItemState.COMPLETE
+                ),
+                ChecklistItem(
+                    type = ChecklistItemType.DEVELOPER_SETTINGS,
+                    description = "Developer options must be enabled",
+                    completionState = ChecklistItemState.IN_PROGRESS
+                ),
+                ChecklistItem(
+                    type = ChecklistItemType.DEVELOPER_SETTINGS,
+                    description = "Developer options must be enabled",
+                    completionState = ChecklistItemState.LOCKED
+                ),
+                ChecklistItem(
+                    type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
+                    description = "GeoMock must be set as the system's mock location provider",
+                    completionState = ChecklistItemState.INCOMPLETE
+                )
+            ),
+            onClick = { }
+        )
+    }
 }

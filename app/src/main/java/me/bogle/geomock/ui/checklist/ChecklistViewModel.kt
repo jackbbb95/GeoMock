@@ -43,7 +43,7 @@ class ChecklistViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { ChecklistState.Loading }
 
-            mockLocationProviderManager.checkMockLocationProviderState()
+            delay(1000)
 
             val hasFineLocationPermission = ContextCompat.checkSelfPermission(
                 context,
@@ -55,6 +55,8 @@ class ChecklistViewModel @Inject constructor(
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
                 0
             ) == 1
+
+            mockLocationProviderManager.checkMockLocationProviderState()
 
             val isSetAsMockLocationProvider =
                 mockLocationProviderManager.state.value == MockLocationProviderState.IsSetAsMockLocationProvider
@@ -68,16 +70,22 @@ class ChecklistViewModel @Inject constructor(
                 developerOptionsItem = ChecklistItem(
                     type = ChecklistItemType.DEVELOPER_SETTINGS,
                     description = "Developer options must be enabled",
-                    completionState = if (isDeveloperOptionsEnabled) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
+                    completionState = when {
+                        !hasFineLocationPermission -> ChecklistItemState.LOCKED
+                        isDeveloperOptionsEnabled -> ChecklistItemState.COMPLETE
+                        else -> ChecklistItemState.INCOMPLETE
+                    }
                 ),
                 mockLocationProviderItem = ChecklistItem(
                     type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
                     description = "GeoMock must be set as the system's mock location provider",
-                    completionState = if (isSetAsMockLocationProvider) ChecklistItemState.COMPLETE else ChecklistItemState.INCOMPLETE
+                    completionState = when {
+                        !hasFineLocationPermission || !isDeveloperOptionsEnabled -> ChecklistItemState.LOCKED
+                        isSetAsMockLocationProvider -> ChecklistItemState.COMPLETE
+                        else -> ChecklistItemState.INCOMPLETE
+                    }
                 )
             )
-
-            delay(1000)
 
             reduceState(state)
         }
@@ -197,7 +205,7 @@ enum class ChecklistItemType {
 }
 
 enum class ChecklistItemState {
-    INCOMPLETE, IN_PROGRESS, COMPLETE
+    INCOMPLETE, IN_PROGRESS, LOCKED, COMPLETE
 }
 
 private object SettingsConstants {
