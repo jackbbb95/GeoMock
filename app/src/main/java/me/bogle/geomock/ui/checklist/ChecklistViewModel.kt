@@ -43,8 +43,6 @@ class ChecklistViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { ChecklistState.Loading }
 
-            delay(1000)
-
             val hasFineLocationPermission = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -57,6 +55,9 @@ class ChecklistViewModel @Inject constructor(
             ) == 1
 
             mockLocationProviderManager.checkMockLocationProviderState()
+
+            // Minimum load time
+            delay(1000)
 
             val isSetAsMockLocationProvider =
                 mockLocationProviderManager.state.value == MockLocationProviderState.IsSetAsMockLocationProvider
