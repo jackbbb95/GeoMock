@@ -25,6 +25,15 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(extra.get("GEOMOCK_RELEASE_STORE_FILE")!!)
+            storePassword = extra.get("GEOMOCK_RELEASE_STORE_PASSWORD") as String
+            keyAlias = extra.get("GEOMOCK_RELEASE_KEY_ALIAS") as String
+            keyPassword = extra.get("GEOMOCK_RELEASE_KEY_PASSWORD") as String
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -32,7 +41,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug") // TODO
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
