@@ -31,13 +31,21 @@ fun ChecklistItems(
     checklistItems: List<ChecklistItem>,
     onClick: (ChecklistItem) -> Unit,
 ) {
-    checklistItems.forEach { item ->
-        ChecklistCard(
-            modifier = Modifier.fillMaxWidth(),
-            description = item.description,
-            completionState = item.completionState,
-            onClick = { onClick(item) }
-        )
+    Column(
+        verticalArrangement = Arrangement.spacedBy(
+            16.dp,
+            Alignment.CenterVertically
+        ),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        checklistItems.forEach { item ->
+            ChecklistCard(
+                modifier = Modifier.fillMaxWidth(),
+                description = item.description,
+                completionState = item.completionState,
+                onClick = { onClick(item) }
+            )
+        }
     }
 }
 
@@ -120,38 +128,29 @@ private fun ChecklistCard(
 @GeoMockPreview
 @Composable
 private fun ChecklistPreview() = GeoMockThemedPreview {
-    Column(
-        modifier = Modifier.padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(
-            16.dp,
-            Alignment.CenterVertically
-        ),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        ChecklistItems(
-            checklistItems = listOf(
-                ChecklistItem(
-                    type = ChecklistItemType.PERMISSIONS,
-                    description = "Fine location access permission is required",
-                    completionState = ChecklistItemState.COMPLETE
-                ),
-                ChecklistItem(
-                    type = ChecklistItemType.DEVELOPER_SETTINGS,
-                    description = "Developer options must be enabled",
-                    completionState = ChecklistItemState.IN_PROGRESS
-                ),
-                ChecklistItem(
-                    type = ChecklistItemType.DEVELOPER_SETTINGS,
-                    description = "Developer options must be enabled",
-                    completionState = ChecklistItemState.LOCKED
-                ),
-                ChecklistItem(
-                    type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
-                    description = "GeoMock must be set as the system's mock location provider",
-                    completionState = ChecklistItemState.INCOMPLETE
-                )
+    ChecklistItems(
+        checklistItems = listOf(
+            ChecklistItem(
+                type = ChecklistItemType.PERMISSIONS,
+                description = "Fine location access permission is required",
+                completionState = ChecklistItemState.COMPLETE
             ),
-            onClick = { }
-        )
-    }
+            ChecklistItem(
+                type = ChecklistItemType.DEVELOPER_SETTINGS,
+                description = "Developer options must be enabled",
+                completionState = ChecklistItemState.IN_PROGRESS
+            ),
+            ChecklistItem(
+                type = ChecklistItemType.DEVELOPER_SETTINGS,
+                description = "Developer options must be enabled",
+                completionState = ChecklistItemState.LOCKED
+            ),
+            ChecklistItem(
+                type = ChecklistItemType.MOCK_LOCATION_PROVIDER,
+                description = "GeoMock must be set as the system's mock location provider",
+                completionState = ChecklistItemState.INCOMPLETE
+            )
+        ),
+        onClick = { }
+    )
 }
