@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+*.abb
+*.jks
+/app/release/app-release.aab
+/secrets.properties
