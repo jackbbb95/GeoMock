@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "617002064030",
+    "project_id": "geomock-34f77",
+    "storage_bucket": "geomock-34f77.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:617002064030:android:61492d2c489247fc53c38f",
+        "android_client_info": {
+          "package_name": "me.bogle.geomock"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmDRwqHdU-yMK-uC9kWO59Nw321voQxt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
