@@ -54,10 +54,10 @@ class ChecklistViewModel @Inject constructor(
                 0
             ) == 1
 
-            mockLocationProviderManager.checkMockLocationProviderState()
-
             // Minimum load time
             delay(1000)
+
+            mockLocationProviderManager.checkMockLocationProviderState()
 
             val isSetAsMockLocationProvider =
                 mockLocationProviderManager.state.value == MockLocationProviderState.IsSetAsMockLocationProvider
