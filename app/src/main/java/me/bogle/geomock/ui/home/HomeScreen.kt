@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +73,7 @@ import me.bogle.geomock.ui.checklist.ChecklistViewModel
 import me.bogle.geomock.ui.checklist.hasLocationPermission
 import me.bogle.geomock.util.prettyPrint
 import timber.log.Timber
+import kotlin.math.max
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -85,11 +87,15 @@ fun HomeScreen() {
 
     // Set initial camera position to current location
     var hasSetLocationOnInitOrUserInteracted by remember { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     val checkListState = checklistViewModel.uiState
         .collectAsStateWithLifecycle()
         .value
     val mockLocationLatLng = homeViewModel.mockLocationManager
         .currentMockLocation
+        .collectAsStateWithLifecycle()
+        .value
+    val addressSearchState = homeViewModel.addressSearchState
         .collectAsStateWithLifecycle()
         .value
 
@@ -214,7 +220,7 @@ fun HomeScreen() {
             AnimatedVisibility(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(8.dp),
+                    .padding(top = 72.dp, end = 8.dp),
                 visible = mockLocationLatLng != null,
                 enter = fadeIn() + scaleIn(),
                 exit = fadeOut() + scaleOut()
@@ -241,6 +247,43 @@ fun HomeScreen() {
                     )
                 }
             }
+
+            AddressSearchBar(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                query = searchQuery,
+                onQueryChange = { newQuery ->
+                    searchQuery = newQuery
+                    if (newQuery.isBlank()) homeViewModel.clearAddressSearch()
+                },
+                state = addressSearchState,
+                isMocking = mockLocationLatLng != null,
+                onSearch = {
+                    // Searching counts as user interaction, so the automatic pan to
+                    // the real location must not fight it afterwards
+                    hasSetLocationOnInitOrUserInteracted = true
+                    homeViewModel.searchAddress(
+                        query = searchQuery,
+                        bounds = cameraPositionState.projection?.visibleRegion?.latLngBounds
+                    )
+                },
+                onResultClick = { result ->
+                    scope.launch {
+                        cameraPositionState.animate(
+                            CameraUpdateFactory.newLatLngZoom(
+                                result.latLng,
+                                max(cameraPositionState.position.zoom, RESULT_ZOOM)
+                            )
+                        )
+                    }
+                    homeViewModel.clearAddressSearch()
+                },
+                onClear = {
+                    searchQuery = ""
+                    homeViewModel.clearAddressSearch()
+                }
+            )
         }
 
         ChecklistDialog()
@@ -365,3 +408,5 @@ private suspend fun CameraPositionState.animateTo(context: Context, target: LatL
 private fun HomeScreenPreview() {
     HomeScreen()
 }
+
+private const val RESULT_ZOOM = 15f

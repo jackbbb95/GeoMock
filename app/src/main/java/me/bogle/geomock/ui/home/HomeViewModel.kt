@@ -9,15 +9,22 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import me.bogle.geomock.data.dataStore
+import me.bogle.geomock.location.AddressGeocoder
+import me.bogle.geomock.location.GeocodeOutcome
 import me.bogle.geomock.location.LocationManager
 import me.bogle.geomock.location.MockLocationManager
 import timber.log.Timber
@@ -28,10 +35,40 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     val locationManager: LocationManager,
-    val mockLocationManager: MockLocationManager
+    val mockLocationManager: MockLocationManager,
+    private val addressGeocoder: AddressGeocoder
 ) : ViewModel() {
 
     // TODO: Use a real database
+
+    private val _addressSearchState = MutableStateFlow<AddressSearchState>(AddressSearchState.Idle)
+    val addressSearchState: StateFlow<AddressSearchState> = _addressSearchState.asStateFlow()
+
+    private var searchJob: Job? = null
+
+    fun searchAddress(query: String, bounds: LatLngBounds?) {
+        searchJob?.cancel()
+
+        if (query.isBlank()) {
+            _addressSearchState.value = AddressSearchState.Idle
+            return
+        }
+
+        searchJob = viewModelScope.launch {
+            _addressSearchState.value = AddressSearchState.Searching
+            _addressSearchState.value = when (val outcome = addressGeocoder.search(query, bounds)) {
+                is GeocodeOutcome.Success -> AddressSearchState.Results(outcome.results)
+                GeocodeOutcome.NoResults -> AddressSearchState.NoResults
+                GeocodeOutcome.Unavailable -> AddressSearchState.Unavailable
+                GeocodeOutcome.Error -> AddressSearchState.Error
+            }
+        }
+    }
+
+    fun clearAddressSearch() {
+        searchJob?.cancel()
+        _addressSearchState.value = AddressSearchState.Idle
+    }
 
     fun saveLastRealLocation(latLng: LatLng) = writePreferences { settings ->
         settings[LAST_LOCATION] = latLng.toPreferenceString()
