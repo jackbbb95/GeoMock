@@ -29,16 +29,15 @@ class MockLocationManager @Inject constructor(
     /**
      * Pushes [locationLatLng] to every location provider.
      *
-     * @return false when a [SecurityException] came back, meaning the app is no longer the
-     * system's mock location provider and the caller must stop looping.
+     * @return false when the app is not the system's mock location provider. In that state
+     * Play Services throws [SecurityException] from its own handler thread, where nothing here
+     * can catch it, so the only way to avoid that crash is not to call at all.
      */
     fun setMockLocation(locationLatLng: LatLng): Boolean {
         if (!context.isSelectedMockLocationApp()) {
-            // Advisory only. Play Services is the authority on whether mocking is allowed and
-            // this app op could disagree on an OEM build, so it must not decide anything here;
-            // that would disable mocking on devices where it actually works. The
-            // SecurityException handling below is what keeps the old crash away.
-            Timber.w("GeoMock does not look like the selected mock location provider")
+            Timber.i("GeoMock is not the selected mock location provider")
+            _currentMockLocation.update { null }
+            return false
         }
 
         val client = LocationServices.getFusedLocationProviderClient(context)
@@ -103,6 +102,14 @@ class MockLocationManager @Inject constructor(
     }
 
     fun unsetMockLocation() {
+        if (!context.isSelectedMockLocationApp()) {
+            // setMockMode(false) would throw the same uncatchable SecurityException. The system
+            // has already dropped the mock mode with the permission, so there is nothing to undo.
+            Timber.i("GeoMock is not the selected mock location provider")
+            _currentMockLocation.update { null }
+            return
+        }
+
         val client = LocationServices.getFusedLocationProviderClient(context)
         if (ActivityCompat.checkSelfPermission(
                 context,
