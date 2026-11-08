@@ -1,3 +1,13 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+
+# Per-machine Android Studio settings, rewritten by the IDE
+/compiler.xml
+/gradle.xml
+/misc.xml
+/deploymentTargetSelector.xml
+/migrations.xml
+/AndroidProjectSystem.xml
+/appInsightsSettings.xml
+/runConfigurations.xml
