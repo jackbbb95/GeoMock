@@ -29,15 +29,16 @@ class MockLocationManager @Inject constructor(
     /**
      * Pushes [locationLatLng] to every location provider.
      *
-     * @return false when the app is no longer the system's mock location provider, either
-     * because the check here says so or because a [SecurityException] came back. The caller
-     * must stop looping in that case.
+     * @return false when a [SecurityException] came back, meaning the app is no longer the
+     * system's mock location provider and the caller must stop looping.
      */
     fun setMockLocation(locationLatLng: LatLng): Boolean {
         if (!context.isSelectedMockLocationApp()) {
-            Timber.i("GeoMock is not the selected mock location provider")
-            _currentMockLocation.update { null }
-            return false
+            // Advisory only. Play Services is the authority on whether mocking is allowed and
+            // this app op could disagree on an OEM build, so it must not decide anything here;
+            // that would disable mocking on devices where it actually works. The
+            // SecurityException handling below is what keeps the old crash away.
+            Timber.w("GeoMock does not look like the selected mock location provider")
         }
 
         val client = LocationServices.getFusedLocationProviderClient(context)
@@ -102,12 +103,6 @@ class MockLocationManager @Inject constructor(
     }
 
     fun unsetMockLocation() {
-        if (!context.isSelectedMockLocationApp()) {
-            // Not selected any more, so setMockMode() would only throw.
-            _currentMockLocation.update { null }
-            return
-        }
-
         val client = LocationServices.getFusedLocationProviderClient(context)
         if (ActivityCompat.checkSelfPermission(
                 context,

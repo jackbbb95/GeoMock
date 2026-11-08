@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -61,13 +62,16 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.bogle.geomock.location.MockLocationService
 import me.bogle.geomock.ui.checklist.ChecklistDialog
 import me.bogle.geomock.ui.checklist.ChecklistViewModel
 import me.bogle.geomock.ui.checklist.hasLocationPermission
 import me.bogle.geomock.util.prettyPrint
+import timber.log.Timber
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -98,15 +102,9 @@ fun HomeScreen() {
         .map { MarkerState.invoke(position = it) }
 
     LaunchedEffect(Unit) {
-        // Set camera position to last known location (if available), on startup.
-        //
-        // Assigning `position` instead of animating a CameraUpdate: this effect runs before
-        // the GoogleMap composable has created the map, and CameraUpdateFactory is not
-        // initialized until then, which crashed with "CameraUpdateFactory is not initialized"
-        // on cold starts. CameraPositionState stores the value and applies it when the map
-        // attaches.
+        // Set camera position to last known location (if available), on startup
         homeViewModel.getLastRealLocation().first()?.let { currentLatLng ->
-            cameraPositionState.position = CameraPosition(currentLatLng, 10f, 0f, 0f)
+            cameraPositionState.animateTo(context, currentLatLng)
         }
     }
 
@@ -117,7 +115,7 @@ fun HomeScreen() {
                 // if the user has not interacted with the map yet
                 homeViewModel.locationManager.getCurrentLocation()?.let { currentLatLng ->
                     if (!hasSetLocationOnInitOrUserInteracted) {
-                        cameraPositionState.position = CameraPosition(currentLatLng, 10f, 0f, 0f)
+                        cameraPositionState.animateTo(context, currentLatLng)
                         homeViewModel.saveLastRealLocation(currentLatLng)
                         hasSetLocationOnInitOrUserInteracted = true
                     }
@@ -327,6 +325,38 @@ private fun FloatingActionButtonLayout(
                 }
             }
         )
+    }
+}
+
+/**
+ * Animates the camera to [target], initialising the Maps SDK first if nothing has yet.
+ *
+ * `CameraUpdateFactory` throws "CameraUpdateFactory is not initialized" until the SDK is
+ * initialised, which the GoogleMap composable does when it creates its MapView — on a cold
+ * start that can happen after the caller has already run. [CameraPositionState.animate]
+ * already waits for the map to attach, so only building the CameraUpdate needs this.
+ * [MapsInitializer.initialize] is idempotent, so repeat calls cost nothing.
+ */
+private suspend fun CameraPositionState.animateTo(context: Context, target: LatLng) {
+    val position = CameraPosition(target, 10f, 0f, 0f)
+
+    withContext(Dispatchers.IO) {
+        MapsInitializer.initialize(context.applicationContext)
+    }
+
+    val cameraUpdate = try {
+        CameraUpdateFactory.newCameraPosition(position)
+    } catch (e: NullPointerException) {
+        // The maps module could not be loaded, so the map will not render either. Fall back
+        // to the deferred setter instead of crashing.
+        Timber.e(e, "CameraUpdateFactory is still not initialized")
+        null
+    }
+
+    if (cameraUpdate == null) {
+        this.position = position
+    } else {
+        animate(cameraUpdate)
     }
 }
 
