@@ -89,17 +89,24 @@ fun HomeScreen() {
         .collectAsStateWithLifecycle()
         .value
 
-    val starredLocationMarkers = homeViewModel.getStarredLocations()
+    // Remembered so a new Flow (and therefore a new DataStore read) is not created on every
+    // recomposition; the camera position changes constantly while the map is being panned.
+    val starredLocationsFlow = remember(homeViewModel) { homeViewModel.getStarredLocations() }
+    val starredLocationMarkers = starredLocationsFlow
         .collectAsStateWithLifecycle(emptyList())
         .value
         .map { MarkerState.invoke(position = it) }
 
     LaunchedEffect(Unit) {
-        // Set camera position to last known location (if available), on startup
+        // Set camera position to last known location (if available), on startup.
+        //
+        // Assigning `position` instead of animating a CameraUpdate: this effect runs before
+        // the GoogleMap composable has created the map, and CameraUpdateFactory is not
+        // initialized until then, which crashed with "CameraUpdateFactory is not initialized"
+        // on cold starts. CameraPositionState stores the value and applies it when the map
+        // attaches.
         homeViewModel.getLastRealLocation().first()?.let { currentLatLng ->
-            val position = CameraPosition(currentLatLng, 10f, 0f, 0f)
-            val cameraUpdate = CameraUpdateFactory.newCameraPosition(position)
-            cameraPositionState.animate(cameraUpdate)
+            cameraPositionState.position = CameraPosition(currentLatLng, 10f, 0f, 0f)
         }
     }
 
@@ -110,9 +117,7 @@ fun HomeScreen() {
                 // if the user has not interacted with the map yet
                 homeViewModel.locationManager.getCurrentLocation()?.let { currentLatLng ->
                     if (!hasSetLocationOnInitOrUserInteracted) {
-                        val position = CameraPosition(currentLatLng, 10f, 0f, 0f)
-                        val cameraUpdate = CameraUpdateFactory.newCameraPosition(position)
-                        cameraPositionState.animate(cameraUpdate)
+                        cameraPositionState.position = CameraPosition(currentLatLng, 10f, 0f, 0f)
                         homeViewModel.saveLastRealLocation(currentLatLng)
                         hasSetLocationOnInitOrUserInteracted = true
                     }

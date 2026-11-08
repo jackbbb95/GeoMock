@@ -4,13 +4,11 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
-import com.google.android.gms.location.LocationServices
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class MockLocationProviderManager @Inject constructor(
@@ -20,9 +18,7 @@ class MockLocationProviderManager @Inject constructor(
         MutableStateFlow<MockLocationProviderState>(MockLocationProviderState.Loading)
     val state: StateFlow<MockLocationProviderState> = _state.asStateFlow()
 
-    // https://stackoverflow.com/a/78790501
     suspend fun checkMockLocationProviderState() {
-        val client = LocationServices.getFusedLocationProviderClient(context)
         if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -36,16 +32,17 @@ class MockLocationProviderManager @Inject constructor(
             return
         }
 
-        try {
-            client.setMockMode(true).await()
-
-            client.setMockMode(false).addOnCompleteListener {
-                _state.update { MockLocationProviderState.IsSetAsMockLocationProvider }
-            }.await()
-        } catch (e: SecurityException) {
-            _state.update { MockLocationProviderState.IsNotSetAsMockLocationProvider }
-        } catch (e: Exception) {
-            _state.update { MockLocationProviderState.ErrorCheckingMockLocationProvider }
+        // This used to probe the fused location client with `setMockMode(true)` and rely on
+        // catching the resulting SecurityException. That put the exception inside Play
+        // Services' own connection callback, which the app cannot catch, so every return to
+        // the app from a device where GeoMock was not selected crashed. The app op is the
+        // same signal, read locally.
+        _state.update {
+            if (context.isSelectedMockLocationApp()) {
+                MockLocationProviderState.IsSetAsMockLocationProvider
+            } else {
+                MockLocationProviderState.IsNotSetAsMockLocationProvider
+            }
         }
     }
 }
