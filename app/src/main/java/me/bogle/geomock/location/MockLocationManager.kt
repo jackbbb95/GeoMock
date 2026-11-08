@@ -26,7 +26,20 @@ class MockLocationManager @Inject constructor(
     private val _currentMockLocation: MutableStateFlow<LatLng?> = MutableStateFlow(null)
     val currentMockLocation = _currentMockLocation.asStateFlow()
 
-    fun setMockLocation(locationLatLng: LatLng) {
+    /**
+     * Pushes [locationLatLng] to every location provider.
+     *
+     * @return false when the app is not the system's mock location provider. In that state
+     * Play Services throws [SecurityException] from its own handler thread, where nothing here
+     * can catch it, so the only way to avoid that crash is not to call at all.
+     */
+    fun setMockLocation(locationLatLng: LatLng): Boolean {
+        if (!context.isSelectedMockLocationApp()) {
+            Timber.i("GeoMock is not the selected mock location provider")
+            _currentMockLocation.update { null }
+            return false
+        }
+
         val client = LocationServices.getFusedLocationProviderClient(context)
         if (ActivityCompat.checkSelfPermission(
                 context,
@@ -39,8 +52,15 @@ class MockLocationManager @Inject constructor(
             Timber.i("Location permissions were expected, but were not granted")
         }
 
-        // Turn on mock mode
-        client.setMockMode(true)
+        // Turn on mock mode. This throws if the user removes GeoMock from the "select mock
+        // location app" setting while the mock is running, which used to crash the app.
+        try {
+            client.setMockMode(true)
+        } catch (e: SecurityException) {
+            Timber.e(e, "GeoMock is no longer the selected mock location provider")
+            _currentMockLocation.update { null }
+            return false
+        }
 
         fun setMockLocationForProvider(provider: String) {
             val location = Location(provider).apply {
@@ -52,18 +72,23 @@ class MockLocationManager @Inject constructor(
                 elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
             }
 
-            client.setMockLocation(location)
-                .addOnSuccessListener {
-                    _currentMockLocation.update { locationLatLng }
-                    Timber.i("Set mock location to $locationLatLng for provider $provider")
-                }
-                .addOnFailureListener {
-                    _currentMockLocation.update { null }
-                    Timber.e(
-                        it,
-                        "Failed to set mock location to $locationLatLng for provider $provider"
-                    )
-                }
+            try {
+                client.setMockLocation(location)
+                    .addOnSuccessListener {
+                        _currentMockLocation.update { locationLatLng }
+                        Timber.i("Set mock location to $locationLatLng for provider $provider")
+                    }
+                    .addOnFailureListener {
+                        _currentMockLocation.update { null }
+                        Timber.e(
+                            it,
+                            "Failed to set mock location to $locationLatLng for provider $provider"
+                        )
+                    }
+            } catch (e: SecurityException) {
+                _currentMockLocation.update { null }
+                Timber.e(e, "Failed to set mock location to $locationLatLng for provider $provider")
+            }
         }
 
         setMockLocationForProvider(LocationManager.GPS_PROVIDER)
@@ -72,9 +97,19 @@ class MockLocationManager @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             setMockLocationForProvider(LocationManager.FUSED_PROVIDER)
         }
+
+        return true
     }
 
     fun unsetMockLocation() {
+        if (!context.isSelectedMockLocationApp()) {
+            // setMockMode(false) would throw the same uncatchable SecurityException. The system
+            // has already dropped the mock mode with the permission, so there is nothing to undo.
+            Timber.i("GeoMock is not the selected mock location provider")
+            _currentMockLocation.update { null }
+            return
+        }
+
         val client = LocationServices.getFusedLocationProviderClient(context)
         if (ActivityCompat.checkSelfPermission(
                 context,
@@ -87,8 +122,13 @@ class MockLocationManager @Inject constructor(
             Timber.i("Location permissions were expected, but were not granted")
         }
 
-        // Turn off mock mode
-        client.setMockMode(false)
+        // Turn off mock mode. Also throws when GeoMock is not the mock location provider,
+        // which happens whenever the service is destroyed after the user changed the setting.
+        try {
+            client.setMockMode(false)
+        } catch (e: SecurityException) {
+            Timber.e(e, "GeoMock is no longer the selected mock location provider")
+        }
 
         _currentMockLocation.update { null }
     }

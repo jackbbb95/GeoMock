@@ -9,6 +9,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.CancellationTokenSource
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 import timber.log.Timber
 import javax.inject.Inject
@@ -32,12 +33,22 @@ class LocationManager @Inject constructor(
             return null
         }
 
-        return client.getCurrentLocation(
-            CurrentLocationRequest.Builder().build(),
-            CancellationTokenSource().token
-        )
-            .addOnSuccessListener { Timber.i("Successfully retrieved current location: $it") }
-            .addOnFailureListener { Timber.e(it, "Failed to retrieve current location") }
-            .await()?.let { LatLng(it.latitude, it.longitude) }
+        return try {
+            client.getCurrentLocation(
+                CurrentLocationRequest.Builder().build(),
+                CancellationTokenSource().token
+            )
+                .addOnSuccessListener { Timber.i("Successfully retrieved current location: $it") }
+                .await()?.let { LatLng(it.latitude, it.longitude) }
+        } catch (e: CancellationException) {
+            // Never swallow cancellation, it would break structured concurrency.
+            throw e
+        } catch (e: Exception) {
+            // A failed fix is routine: location services off, no fix yet, request timed out,
+            // or Play Services returned an error. `await()` rethrows the failure, so without
+            // this the app crashed instead of just falling back to "no known location".
+            Timber.e(e, "Failed to retrieve current location")
+            null
+        }
     }
 }

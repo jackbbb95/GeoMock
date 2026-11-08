@@ -1,6 +1,7 @@
 package me.bogle.geomock.ui.checklist
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -23,6 +24,7 @@ import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_BUILD_NUMBER
 import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_FRAGMENT_ARG_KEY
 import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_MOCK_LOCATION_APP
 import me.bogle.geomock.ui.checklist.SettingsConstants.EXTRA_SHOW_FRAGMENT_ARGUMENTS
+import timber.log.Timber
 import javax.inject.Inject
 
 
@@ -48,7 +50,11 @@ class ChecklistViewModel @Inject constructor(
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
 
-            val isDeveloperOptionsEnabled = Settings.Secure.getInt(
+            // Read from the Global table: DEVELOPMENT_SETTINGS_ENABLED lives there, so
+            // Settings.Secure always returned the default and the checklist could never
+            // complete — which left the dialog up forever and re-ran the mock provider check
+            // on every resume.
+            val isDeveloperOptionsEnabled = Settings.Global.getInt(
                 context.contentResolver,
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
                 0
@@ -138,7 +144,7 @@ class ChecklistViewModel @Inject constructor(
                     putExtra(EXTRA_SHOW_FRAGMENT_ARGUMENTS, bundle)
                 }
 
-                context.startActivity(intent)
+                context.startActivitySafely(intent)
 
                 // New state will be reduced in ON_RESUME
             }
@@ -161,7 +167,7 @@ class ChecklistViewModel @Inject constructor(
                     putExtra(EXTRA_SHOW_FRAGMENT_ARGUMENTS, bundle)
                 }
 
-                context.startActivity(intent)
+                context.startActivitySafely(intent)
 
                 // New state will be reduced in ON_RESUME
             }
@@ -181,6 +187,19 @@ class ChecklistViewModel @Inject constructor(
                 newState
             }
         }
+    }
+}
+
+/**
+ * Opens a Settings screen, tolerating devices that do not expose one (restricted profiles and
+ * some OEM builds). Otherwise the ActivityNotFoundException surfaced from viewModelScope and
+ * killed the app.
+ */
+private fun Context.startActivitySafely(intent: Intent) {
+    try {
+        startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        Timber.e(e, "No activity found to handle ${intent.action}")
     }
 }
 
