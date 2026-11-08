@@ -50,7 +50,11 @@ class ChecklistViewModel @Inject constructor(
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
 
-            val isDeveloperOptionsEnabled = Settings.Secure.getInt(
+            // Read from the Global table: DEVELOPMENT_SETTINGS_ENABLED lives there, so
+            // Settings.Secure always returned the default and the checklist could never
+            // complete — which left the dialog up forever and re-ran the mock provider check
+            // on every resume.
+            val isDeveloperOptionsEnabled = Settings.Global.getInt(
                 context.contentResolver,
                 Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
                 0
