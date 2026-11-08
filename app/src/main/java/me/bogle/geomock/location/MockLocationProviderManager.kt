@@ -3,54 +3,65 @@ package me.bogle.geomock.location
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.delay
+import timber.log.Timber
 import javax.inject.Inject
 
 class MockLocationProviderManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val _state =
-        MutableStateFlow<MockLocationProviderState>(MockLocationProviderState.Loading)
-    val state: StateFlow<MockLocationProviderState> = _state.asStateFlow()
 
-    suspend fun checkMockLocationProviderState() {
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            _state.update { MockLocationProviderState.RequiresLocationPermission }
-
-            return
+    /**
+     * Determines whether GeoMock is the system's selected mock location provider.
+     *
+     * [isSelectedMockLocationApp] reads the "android:mock_location" app-op, which is the
+     * developer setting itself and the value the location service enforces. It is read locally
+     * and immediately, unlike probing with
+     * [com.google.android.gms.location.FusedLocationProviderClient.setMockMode], which
+     * round-trips through Play services and could keep reporting the previous state for a while
+     * after the setting had changed.
+     */
+    suspend fun checkMockLocationProviderState(): MockLocationProviderState {
+        if (!hasLocationPermission()) {
+            return MockLocationProviderState.RequiresLocationPermission
         }
 
-        // This used to probe the fused location client with `setMockMode(true)` and rely on
-        // catching the resulting SecurityException. That put the exception inside Play
-        // Services' own connection callback, which the app cannot catch, so every return to
-        // the app from a device where GeoMock was not selected crashed. The app op is the
-        // same signal, read locally.
-        _state.update {
+        // A selection made in the developer settings can take a moment to become visible here
+        repeat(APP_OP_CHECK_ATTEMPTS) { attempt ->
             if (context.isSelectedMockLocationApp()) {
-                MockLocationProviderState.IsSetAsMockLocationProvider
-            } else {
-                MockLocationProviderState.IsNotSetAsMockLocationProvider
+                Timber.i("GeoMock is the selected mock location app")
+                return MockLocationProviderState.IsSetAsMockLocationProvider
+            }
+
+            if (attempt < APP_OP_CHECK_ATTEMPTS - 1) {
+                delay(APP_OP_CHECK_INTERVAL_MS)
             }
         }
+
+        Timber.i("GeoMock is not the selected mock location app")
+        return MockLocationProviderState.IsNotSetAsMockLocationProvider
+    }
+
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private companion object {
+        const val APP_OP_CHECK_ATTEMPTS = 3
+        const val APP_OP_CHECK_INTERVAL_MS = 200L
     }
 }
 
 sealed interface MockLocationProviderState {
-    data object Loading : MockLocationProviderState
     data object RequiresLocationPermission : MockLocationProviderState
     data object IsNotSetAsMockLocationProvider : MockLocationProviderState
-    data object ErrorCheckingMockLocationProvider : MockLocationProviderState
     data object IsSetAsMockLocationProvider : MockLocationProviderState
 }

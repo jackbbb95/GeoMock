@@ -11,6 +11,7 @@ import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,8 +42,13 @@ class ChecklistViewModel @Inject constructor(
             initialValue = ChecklistState.Loading
         )
 
+    private var startupCheckJob: Job? = null
+
     fun performStartupCheck(context: Context) {
-        viewModelScope.launch {
+        // A new check supersedes any that is still running, so a slow, outdated result can't
+        // overwrite a newer one (e.g. when returning from the developer settings)
+        startupCheckJob?.cancel()
+        startupCheckJob = viewModelScope.launch {
             _uiState.update { ChecklistState.Loading }
 
             val hasFineLocationPermission = ContextCompat.checkSelfPermission(
@@ -63,10 +69,8 @@ class ChecklistViewModel @Inject constructor(
             // Minimum load time
             delay(1000)
 
-            mockLocationProviderManager.checkMockLocationProviderState()
-
             val isSetAsMockLocationProvider =
-                mockLocationProviderManager.state.value == MockLocationProviderState.IsSetAsMockLocationProvider
+                mockLocationProviderManager.checkMockLocationProviderState() == MockLocationProviderState.IsSetAsMockLocationProvider
 
             val state = ChecklistState.Incomplete(
                 permissionsItem = ChecklistItem(
