@@ -16,7 +16,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        Timber.plant(Timber.DebugTree())
+        // Debug logs include mock coordinates, so they must not reach a release build.
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
 
         setContent {
             GeoMockTheme {
