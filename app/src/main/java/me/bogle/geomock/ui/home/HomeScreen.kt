@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
@@ -151,6 +154,10 @@ fun HomeScreen() {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        // The map is the background: it runs under the status and navigation bars, and
+        // only the controls on top of it are inset. Zeroing the content insets is what
+        // lets the map reach the screen edges.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             FloatingActionButtonLayout(
@@ -161,15 +168,8 @@ fun HomeScreen() {
                 scope = scope
             )
         }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding()
-                )
-        ) {
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
             GoogleMap(
                 uiSettings = MapUiSettings(
                     tiltGesturesEnabled = false,
@@ -220,6 +220,7 @@ fun HomeScreen() {
             AnimatedVisibility(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
+                    .statusBarsPadding()
                     .padding(top = 72.dp, end = 8.dp),
                 visible = mockLocationLatLng != null,
                 enter = fadeIn() + scaleIn(),
@@ -251,6 +252,7 @@ fun HomeScreen() {
             AddressSearchBar(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
+                    .statusBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 query = searchQuery,
                 onQueryChange = { newQuery ->
@@ -299,6 +301,7 @@ private fun FloatingActionButtonLayout(
     scope: CoroutineScope
 ) {
     Column(
+        modifier = Modifier.navigationBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
